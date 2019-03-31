@@ -87,24 +87,29 @@ def split_dataset():
     Split train and test from whole dataset according to labels
     : Images are already random
     """
-    source = 'Data/Images'
-    dest = 'Data/test'
+    source = 'Data/Images/'
+    dest = 'Data/'
     files = os.listdir(source)
     sort_ = []
     for file in files:
         file = file.split('.')[0]
-        file = file.split('-')[1]
         file = int(file)
         sort_.append(file)
     sort_.sort()
     new_sort = []
     for file in sort_:
-        file = 'IMG-' + str(file) + '.png'
+        file = str(file) + '.png'
         new_sort.append(file)
-    test = new_sort[0:3000]
-    for f in test:
-        shutil.move(source + '/' + f, dest + '/' + f)
-    os.rename('Data/Images', 'Data/train')
+
+    labels = np.load('Data/labels.npy')
+    for i in range(0, 7):
+        index = np.where(labels == i)
+        new_ = []
+        for ele in index[0]:
+            new_.append(new_sort[ele])
+
+        for f in new_:
+            shutil.move(source + f, dest + str(i) + '/' + f)
 
 # Script Using all the functions to create face detected images
 
@@ -122,14 +127,10 @@ def main():
         if image is not None:
             image = (image*255)
             image = Image.fromarray(image).convert('RGB')
-            image.save('Data/Images/' + 'IMG-' + str(index) + '.png')
+            image.save('Data/Images/' + str(index) + '.png')
             labels.append(emotion)
         index = index + 1
 
-    test_labels = labels[0:3000]
-    train_labels = labels[3000:]
-    np.save(os.path.join('Data', 'test_labels.npy'), test_labels)
-    np.save(os.path.join('Data', 'train_labels.npy'), train_labels)
     split_dataset()
 
 

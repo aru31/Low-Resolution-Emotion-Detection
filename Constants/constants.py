@@ -2,5 +2,4 @@
 FACE_SIZE = 48
 EMOTIONS = ['angry', 'disgusted', 'fearful',
             'happy', 'sad', 'surprised', 'neutral']
-TRAIN_DATA_PATH = "./Data/train/"
-TEST_DATA_PATH = "./Data/test/"
+DATA_PATH = "./Data"

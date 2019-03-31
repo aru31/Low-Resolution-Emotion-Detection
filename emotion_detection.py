@@ -1,17 +1,16 @@
 import torch
 import torchvision
 import numpy as np
-import torch.utils.data as utils
 import matplotlib.pyplot as plt
+import torch.utils.data as utils
+import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
 import warnings
 
-from sklearn.model_selection import train_test_split
-
-from Constants.constants import FACE_SIZE, EMOTIONS
+from Constants.constants import EMOTIONS, DATA_PATH
 
 
 warnings.filterwarnings("ignore")
@@ -31,36 +30,30 @@ def load_data():
     Load dataset from numpy(.npy) objects
     : Reshape to make numpy array a pytorch tensor
     """
-    images = np.load('Data/images.npy')
-    labels = np.load('Data/labels.npy')
     # pytorch images are represented as [batch_size, channels, height, width]
-    images = images.reshape([-1, 1, FACE_SIZE, FACE_SIZE])
-    labels = labels.reshape([-1, 1])
-    images_train, images_test, labels_train, labels_test = train_test_split(
-        images,
-        labels,
-        test_size=0.20,
-        random_state=2
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                             std=[0.5, 0.5, 0.5])
+    ])
+    train_dataset = torchvision.datasets.ImageFolder(
+        root=DATA_PATH,
+        transform=transform
     )
-    # Create pytorch Dataloader from numpy objects
-    tensor_images_train = torch.stack([torch.Tensor(i) for i in images_train])
-    tensor_labels_train = torch.stack([torch.Tensor(i) for i in labels_train])
-    tensor_images_test = torch.stack([torch.Tensor(i) for i in images_test])
-    tensor_labels_test = torch.stack([torch.Tensor(i) for i in labels_test])
-
-    train_dataset = utils.TensorDataset(
-        tensor_images_train, tensor_labels_train)
+    test_dataset = torchvision.datasets.ImageFolder(
+        root=DATA_PATH,
+        transform=transform
+    )
     train_dataloader = utils.DataLoader(
         train_dataset,
         batch_size=4,
         shuffle=True,
         num_workers=2
     )
-    test_dataset = utils.TensorDataset(tensor_images_test, tensor_labels_test)
     test_dataloader = utils.DataLoader(
         test_dataset,
         batch_size=4,
-        shuffle=True,
+        shuffle=False,
         num_workers=2
     )
     return train_dataloader, test_dataloader
@@ -68,10 +61,10 @@ def load_data():
 
 def imshow(img):
     """
-    Function to print py-torchtensor image
+    Function to print pytorch tensor image
     : npy images are normalized by a factor of 255
     """
-    img = img*255
+    img = img / 2 + 0.5
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
@@ -86,7 +79,7 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(
-            in_channels=1,
+            in_channels=3,
             out_channels=64,
             kernel_size=(5, 5)
         )
@@ -108,7 +101,7 @@ class Net(nn.Module):
             out_channels=128,
             kernel_size=(4, 4)
         )
-        self.fc1 = nn.Linear(128 * 15 * 15, 3072)
+        self.fc1 = nn.Linear(128*5*5, 3072)
         self.fc2 = nn.Linear(3072, len(EMOTIONS))
 
     def forward(self, x):
@@ -118,7 +111,7 @@ class Net(nn.Module):
         x = self.pool1(F.relu(self.conv1(x)))
         x = self.pool2(F.relu(self.conv2(x)))
         x = F.relu(self.conv3(x))
-        x = x.view(-1, 128 * 15 * 15)
+        x = x.view(-1, 128*5*5)
         x = F.relu(self.fc1(x))
         x = F.softmax(self.fc2(x))
         return x
@@ -142,14 +135,16 @@ def train():
     """
     Script to train model
     """
-    trainloader, _= load_data()
-
+    trainloader, _ = load_data()
+    classes = label_classes()
     # Random check training images
     dataiter = iter(trainloader)
     images, labels = dataiter.next()
     imshow(torchvision.utils.make_grid(images))
+    print(' '.join('%5s' % classes[labels[j]] for j in range(4)))
 
     # Actual model training
+    print('Start Training')
     criterion, optimizer = Optimizer()
     for epoch in range(2):
         running_loss = 0.0
@@ -194,7 +189,7 @@ def test():
             correct += (predicted == labels).sum().item()
 
     print('Accuracy of the network on the 10000 test images: %d %%' % (
-            100 * correct / total))
+        100 * correct / total))
 
 
 def check_prediction():
@@ -213,7 +208,6 @@ def main():
     Main Function from which script is executed
     """
     train()
-    test()
 
 
 main()
